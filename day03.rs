@@ -1,69 +1,47 @@
 use std::io;
 
-fn find_common(a: &[u8], b: &[u8]) -> Option<u8> {
-    for c in a {
-        for d in b {
-            if c == d {
-                return Some(*c);
-            }
-        }
-    }
-    None
+use itertools::Itertools;
+
+fn common<T: std::cmp::PartialEq + Copy>(a: &[T], b: &[T]) -> Vec<T> {
+    a.iter()
+        .map(|c| *c)
+        .filter(|c| b.iter().contains(c))
+        .collect()
 }
 
-fn find_commons(a: &[u8], b: &[u8]) -> Vec<u8> {
-    let mut ret: Vec<u8> = Vec::new();
-    for c in a {
-        for d in b {
-            if c == d {
-                ret.push(*c);
-            }
-        }
-    }
-    ret
+fn first_common<T: std::cmp::PartialEq + Copy>(a: &[T], b: &[T]) -> Option<T> {
+    common(a, b).get(0).map(|c| *c)
 }
 
 fn score(c: u8) -> u32 {
-    if c >= b'a' && c <= b'z' {
-        1 + (c - b'a') as u32
-    } else if c >= b'A' && c <= b'Z' {
-        27 + (c - b'A') as u32
-    } else {
-        unreachable!("Unrecognized letter {c:?}!")
+    match c {
+        b'a'..=b'z' => (c - b'a') as u32 + 1,
+        b'A'..=b'Z' => (c - b'A') as u32 + 27,
+        _ => unreachable!("Unrecognized letter {c:?}!"),
     }
 }
 
+fn halves<T>(items: &[T]) -> (&[T], &[T]) {
+    assert!(items.len() % 2 == 0);
+    items.split_at(items.len() / 2)
+}
+
 fn main() {
-    let mut lines: Vec<String> = Vec::new();
-    for line in io::stdin().lines() {
-        lines.push(line.expect("No line?"));
-    }
+    let lines: Vec<_> = io::stdin().lines().map(Result::unwrap).collect();
 
-    // part 1
-    let mut sum = 0;
-    for line in &lines {
-        let len = line.trim().len();
-        assert!(len % 2 == 0);
-        let first = line[..len / 2].as_bytes();
-        let second = line[len / 2..].as_bytes();
-        sum += match find_common(first, second) {
-            Some(c) => score(c),
-            None => unreachable!("Found no common item in {line:?}!"),
-        };
-    }
-    println!("{sum}");
+    let part1 = lines
+        .iter()
+        .map(|l| halves(l.as_bytes()))
+        .map(|(a, b)| score(first_common(a, b).unwrap()))
+        .sum::<u32>();
+    println!("{part1}");
 
-    // part 2
-    sum = 0;
-    for chunk in lines.chunks(3) {
-        match chunk {
-            [a, b, c] => {
-                let commons = find_commons(b.as_bytes(), c.as_bytes());
-                let common = find_common(a.as_bytes(), &commons);
-                sum += score(common.unwrap());
-            }
-            _ => unreachable!("Must be multiple of 3 lines!"),
-        }
-    }
-    println!("{sum}");
+    let part2 = lines
+        .iter()
+        .tuples()
+        .map(|(a, b, c)| {
+            score(first_common(a.as_bytes(), &common(b.as_bytes(), c.as_bytes())).unwrap())
+        })
+        .sum::<u32>();
+    println!("{part2}");
 }
