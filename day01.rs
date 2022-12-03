@@ -1,6 +1,6 @@
 use std::io;
 
-pub fn main() {
+fn main() {
     let mut elves = Vec::<u32>::new();
 
     let mut calories = 0;

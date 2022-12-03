@@ -60,7 +60,7 @@ impl RPS {
     }
 }
 
-pub fn main() {
+fn main() {
     let mut chars: Vec<(u8, u8)> = Vec::new();
     for line in io::stdin().lines() {
         let line = line.expect("No line?");
