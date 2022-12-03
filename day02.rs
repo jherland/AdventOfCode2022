@@ -1,17 +1,13 @@
 use std::io;
+use std::str::FromStr;
+
+use anyhow::{anyhow, Error, Result};
 
 #[derive(Debug, Clone, Copy)]
 enum RPS {
     Rock,
     Paper,
     Scissors,
-}
-
-#[derive(Debug)]
-enum Outcome {
-    Win,
-    Draw,
-    Loss,
 }
 
 impl RPS {
@@ -60,53 +56,63 @@ impl RPS {
     }
 }
 
+impl FromStr for RPS {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "A" | "X" => Ok(RPS::Rock),
+            "B" | "Y" => Ok(RPS::Paper),
+            "C" | "Z" => Ok(RPS::Scissors),
+            _ => Err(anyhow!("Failed to parse RPS from {s:?}")),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Outcome {
+    Win,
+    Draw,
+    Loss,
+}
+
+impl FromStr for Outcome {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "X" => Ok(Outcome::Loss),
+            "Y" => Ok(Outcome::Draw),
+            "Z" => Ok(Outcome::Win),
+            _ => Err(anyhow!("Failed to parse Outcome from {s:?}")),
+        }
+    }
+}
+
 fn main() {
-    let mut chars: Vec<(u8, u8)> = Vec::new();
-    for line in io::stdin().lines() {
-        let line = line.expect("No line?");
-        let bytes = line.trim().as_bytes();
-        assert!(bytes.len() == 3);
-        chars.push((bytes[0], bytes[2]));
-    }
+    let lines: Vec<_> = io::stdin().lines().map(Result::unwrap).collect();
+    let char_pairs: Vec<_> = lines
+        .iter()
+        .map(|line| line.split_once(" ").unwrap())
+        .collect();
 
-    // part 1
-    let mut total = 0;
-    for (first, second) in chars.iter() {
-        let opponent = match first {
-            b'A' => RPS::Rock,
-            b'B' => RPS::Paper,
-            b'C' => RPS::Scissors,
-            _ => panic!("Parse error: {first:?}"),
-        };
-        let myself = match second {
-            b'X' => RPS::Rock,
-            b'Y' => RPS::Paper,
-            b'Z' => RPS::Scissors,
-            _ => panic!("Parse error: {second:?}"),
-        };
-        let score = myself.score(&opponent);
-        total += score;
-    }
-    println!("{total}");
+    println!(
+        "Part 1: {}",
+        char_pairs
+            .iter()
+            .map(|(a, b)| b.parse::<RPS>().unwrap().score(&a.parse().unwrap()))
+            .sum::<u32>()
+    );
 
-    // part 2
-    let mut total = 0;
-    for (first, second) in chars.iter() {
-        let opponent = match first {
-            b'A' => RPS::Rock,
-            b'B' => RPS::Paper,
-            b'C' => RPS::Scissors,
-            _ => panic!("Parse error: {first:?}"),
-        };
-        let outcome = match second {
-            b'X' => Outcome::Loss,
-            b'Y' => Outcome::Draw,
-            b'Z' => Outcome::Win,
-            _ => panic!("Parse error: {second:?}"),
-        };
-        let myself = opponent.choose(&outcome);
-        let score = myself.score(&opponent);
-        total += score;
-    }
-    println!("{total}");
+    println!(
+        "Part 2: {}",
+        char_pairs
+            .iter()
+            .map(|(a, b)| {
+                let opponent: RPS = a.parse().unwrap();
+                let outcome: Outcome = b.parse().unwrap();
+                opponent.choose(&outcome).score(&opponent)
+            })
+            .sum::<u32>()
+    );
 }
