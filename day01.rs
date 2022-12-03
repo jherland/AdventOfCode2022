@@ -1,25 +1,16 @@
 use std::io;
 
+use itertools::Itertools;
+
 fn main() {
-    let mut elves = Vec::<u32>::new();
-
-    let mut calories = 0;
-    for line in io::stdin().lines() {
-        let line = line.unwrap();
-        if line.len() == 0 {
-            elves.push(calories);
-            calories = 0;
-        } else {
-            calories += line.parse::<u32>().expect("Failed to parse {line:?}");
-        }
-    }
-    elves.sort();
-
-    // part 1
-    let max_elf = elves[elves.len() - 1];
-    println!("{max_elf:?}");
-
-    // part 2
-    let max_elves: u32 = elves[elves.len() - 3..].iter().sum();
-    println!("{max_elves:?}");
+    let lines: Vec<_> = io::stdin().lines().map(Result::unwrap).collect();
+    let paragraphs: Vec<_> = lines.split(|l| l == "").collect();
+    let elves: Vec<_> = paragraphs
+        .iter()
+        .map(|&lines| lines.iter().map(|l| l.parse::<u32>().unwrap()).sum())
+        .sorted()
+        .rev()
+        .collect();
+    println!("Part 1: {}", elves[0]);
+    println!("Part 2: {}", elves[..3].iter().sum::<u32>());
 }
