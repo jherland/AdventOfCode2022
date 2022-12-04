@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 fn main() {
     let lines: Vec<_> = io::stdin().lines().map(Result::unwrap).collect();
-    let paragraphs: Vec<_> = lines.split(|l| l == "").collect();
+    let paragraphs: Vec<_> = lines.split(String::is_empty).collect();
     let elves: Vec<_> = paragraphs
         .iter()
         .map(|&lines| lines.iter().map(|l| l.parse::<u32>().unwrap()).sum())
