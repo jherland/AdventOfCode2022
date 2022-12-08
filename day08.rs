@@ -14,7 +14,7 @@ struct TreeMap {
 }
 
 impl TreeMap {
-    fn parse<'a, I>(lines: I) -> Self
+    fn parse<I>(lines: I) -> Self
     where
         I: Iterator<Item = String>,
     {
