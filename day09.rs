@@ -54,7 +54,7 @@ struct Pos {
 }
 
 impl Pos {
-    fn move_one(self, dir: Dir) -> Self {
+    fn walk(self, dir: Dir) -> Self {
         match dir {
             Up => self + Pos { y: -1, x: 0 },
             Down => self + Pos { y: 1, x: 0 },
@@ -81,7 +81,33 @@ impl Add for Pos {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        Self { y: self.y + rhs.y, x: self.x + rhs.x }
+        Self {
+            y: self.y + rhs.y,
+            x: self.x + rhs.x,
+        }
+    }
+}
+
+struct Rope {
+    knots: Vec<Pos>,
+}
+
+impl Rope {
+    fn new(num_knots: usize) -> Self {
+        Rope {
+            knots: vec![Pos { y: 0, x: 0 }; num_knots],
+        }
+    }
+
+    fn tail(&self) -> Pos {
+        self.knots[self.knots.len() - 1]
+    }
+
+    fn drag(&mut self, dir: Dir) {
+        self.knots[0] = self.knots[0].walk(dir);
+        for i in 1..self.knots.len() {
+            self.knots[i] = self.knots[i].follow(self.knots[i - 1]);
+        }
     }
 }
 
@@ -92,28 +118,19 @@ pub fn main() {
         .map(|line| line.parse().unwrap())
         .collect();
 
-    let mut head = Pos { y: 0, x: 0 };
-    let mut tail = head;
+    let mut rope = Rope::new(2);
     let mut tail_history: HashSet<Pos> = HashSet::new();
-    for mov in moves.iter() {
-        for _ in 0..mov.dist {
-            head = head.move_one(mov.dir);
-            tail = tail.follow(head);
-            tail_history.insert(tail);
-        }
+    for dir in moves.iter().flat_map(|m| (0..m.dist).map(|_| m.dir)) {
+        rope.drag(dir);
+        tail_history.insert(rope.tail());
     }
     println!("Part 1: {}", tail_history.len());
 
-    let mut knots = [Pos { y: 0, x: 0 }; 10];
-    let mut tail_history: HashSet<Pos> = HashSet::new();
-    for mov in moves {
-        for _ in 0..mov.dist {
-            knots[0] = knots[0].move_one(mov.dir);
-            for i in 1..knots.len() {
-                knots[i] = knots[i].follow(knots[i - 1]);
-            }
-            tail_history.insert(knots[knots.len() - 1]);
-        }
+    let mut rope = Rope::new(10);
+    tail_history = HashSet::new();
+    for dir in moves.iter().flat_map(|m| (0..m.dist).map(|_| m.dir)) {
+        rope.drag(dir);
+        tail_history.insert(rope.tail());
     }
     println!("Part 2: {}", tail_history.len());
 }
