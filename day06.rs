@@ -10,7 +10,7 @@ fn find_first_pos_after_n_unique(s: &str, n: usize) -> Option<usize> {
         .map(|(pos, _)| pos)
 }
 
-pub fn main() {
+fn main() {
     let mut line = String::new();
     io::stdin()
         .read_line(&mut line)

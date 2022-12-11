@@ -86,7 +86,7 @@ impl TreeMap {
     }
 }
 
-pub fn main() {
+fn main() {
     let map = TreeMap::parse(io::stdin().lines().map(Result::unwrap));
     println!(
         "Part 1: {}",

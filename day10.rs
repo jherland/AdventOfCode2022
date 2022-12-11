@@ -39,7 +39,7 @@ fn extract_x_at_cycle(execution: &Vec<(u32, i32)>, n: u32) -> i32 {
     unreachable!("Gone too far!");
 }
 
-pub fn main() {
+fn main() {
     let instructions: Vec<Instruction> = io::stdin()
         .lines()
         .map(Result::unwrap)

@@ -86,7 +86,7 @@ fn dir_size(dirs: &HashMap<String, Vec<DirEntry>>, path: &str) -> usize {
     sum
 }
 
-pub fn main() {
+fn main() {
     let lines = io::stdin().lines().map(Result::unwrap);
 
     let mut dirs: HashMap<String, Vec<DirEntry>> = HashMap::new();

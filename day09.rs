@@ -111,7 +111,7 @@ impl Rope {
     }
 }
 
-pub fn main() {
+fn main() {
     let moves: Vec<Move> = io::stdin()
         .lines()
         .map(Result::unwrap)
