@@ -39,7 +39,7 @@ impl FromStr for Move {
     type Err = Error;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let (d, n) = line.split_once(' ').ok_or(anyhow!("No space"))?;
+        let (d, n) = line.split_once(' ').ok_or_else(|| anyhow!("No space"))?;
         Ok(Move {
             dir: d.parse()?,
             dist: n.parse()?,
