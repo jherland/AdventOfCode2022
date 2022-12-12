@@ -61,7 +61,10 @@ impl Map {
         ret
     }
 
-    fn shortest_path(&self, start: Pos, end: Pos) -> u32 {
+    fn shortest_path<F>(&self, start: Pos, end: F) -> u32
+    where
+        F: FnOnce(Pos) -> bool + Copy,
+    {
         // Dijkstra's algorithm!
         let mut unvisited: HashSet<Pos> = self.0.keys().cloned().collect();
         let mut dist: HashMap<Pos, u32> = HashMap::new();
@@ -77,6 +80,9 @@ impl Map {
                 .min_by_key(|&p| dist.get(p).unwrap())
                 .unwrap();
             let cur_dist = *dist.get(&current).unwrap();
+            if end(current) {
+                return cur_dist;
+            }
             for nbor in self
                 .adjacents(current)
                 .intersection(&unvisited)
@@ -87,13 +93,12 @@ impl Map {
                 let old_d = *dist.get(&nbor).unwrap_or(&d);
                 dist.insert(nbor, min(d, old_d));
             }
-
             unvisited.remove(&current);
-            if current == end {
-                break;
-            }
         }
-        *dist.get(&end).unwrap()
+    }
+
+    fn flipped(&self) -> Map {
+        Map(self.0.iter().map(|(p, h)| (*p, h.abs_diff(25))).collect())
     }
 }
 
@@ -126,8 +131,13 @@ fn parse(lines: &[String]) -> (Map, Pos, Pos) {
 
 fn main() {
     let lines: Vec<_> = io::stdin().lines().map(Result::unwrap).collect();
-
     let (map, start, end) = parse(&lines);
 
-    println!("Part 1: {}", map.shortest_path(start, end));
+    println!("Part 1: {}", map.shortest_path(start, |p| p == end));
+
+    println!(
+        "Part 2: {}",
+        map.flipped()
+            .shortest_path(end, |p| map.get(p).unwrap() == 0)
+    );
 }
