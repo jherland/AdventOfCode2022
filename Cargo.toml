@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.66"
 itertools = "0.10.5"
+json = "0.12.4"
 tuple-map = "0.4.0"
 
 [[bin]]
@@ -57,3 +58,7 @@ path = "day11.rs"
 [[bin]]
 name = "day12"
 path = "day12.rs"
+
+[[bin]]
+name = "day13"
+path = "day13.rs"
