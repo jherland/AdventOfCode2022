@@ -142,7 +142,9 @@ impl World {
     }
 
     fn run(&self, start: u32, opened: OpenValves, t0: u32, player: usize) -> u32 {
-        let mut states: HashMap<usize, u32> = HashMap::new();
+        let bits_needed =
+            self.state_v_bits + self.state_opened_bits + self.state_t_bits + self.state_player_bits;
+        let mut states: Vec<u32> = vec![0; 1 << bits_needed];
 
         // If I am at valve 'v', and I've opened the set of valves 'opened', and I
         // have 't' minutes left, and there are 'player' other players acting after
@@ -152,7 +154,7 @@ impl World {
             opened: OpenValves,
             t: u32,
             player: usize,
-            states: &mut HashMap<usize, u32>,
+            states: &mut Vec<u32>,
             conditions: &(&World, u32, u32),
         ) -> u32 {
             let (world, start, t0) = conditions;
@@ -167,8 +169,8 @@ impl World {
 
             // Check if we've been in a similar situation before
             let state = world.state(v, opened, t, player);
-            if let Some(n) = states.get(&state) {
-                return *n;
+            if states[state] != 0 {
+                return states[state];
             }
 
             // Evaluate possible actions:
@@ -189,7 +191,7 @@ impl World {
             }
 
             // Record this situation in case we end up here again
-            states.insert(state, ret);
+            states[state] = ret;
             ret
         }
 
