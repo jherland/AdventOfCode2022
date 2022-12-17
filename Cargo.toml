@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.66"
 itertools = "0.10.5"
 json = "0.12.4"
+regex = "1.7.0"
 text_io = "0.1.12"
 tuple-map = "0.4.0"
 
@@ -71,3 +72,7 @@ path = "day14.rs"
 [[bin]]
 name = "day15"
 path = "day15.rs"
+
+[[bin]]
+name = "day16"
+path = "day16.rs"
