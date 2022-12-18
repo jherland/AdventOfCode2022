@@ -1,5 +1,4 @@
 use std::cmp::max;
-use std::collections::HashSet;
 use std::io;
 use std::ops::Add;
 
@@ -76,12 +75,12 @@ const ROCKS: [[Pos; 5]; 5] = [
     ],
 ];
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 struct Rock([Pos; 5]);
 
 impl Rock {
     fn from(raw: [Pos; 5]) -> Self {
-        Self(raw.clone())
+        Self(raw)
     }
 
     fn translate(&self, delta: Pos) -> Self {
@@ -93,10 +92,14 @@ impl Rock {
             self.0[4] + delta,
         ])
     }
+
+    fn contains(&self, pos: Pos) -> bool {
+        self.0.iter().any(|p| *p == pos)
+    }
 }
 
 struct Chamber {
-    rocks: HashSet<Pos>,
+    rocks: Vec<[bool; 7]>,
     falling: Option<Rock>,
     jets: Vec<Pos>,
     num_turns: u64,
@@ -106,7 +109,7 @@ struct Chamber {
 impl Chamber {
     fn construct(jets: Vec<Pos>) -> Self {
         let mut ret = Self {
-            rocks: HashSet::new(),
+            rocks: Vec::new(),
             falling: None,
             jets,
             num_turns: 0,
@@ -117,11 +120,7 @@ impl Chamber {
     }
 
     fn top(&self) -> i32 {
-        self.rocks
-            .iter()
-            .map(|pos| pos.y + 1)
-            .max()
-            .unwrap_or_default()
+        self.rocks.len() as i32
     }
 
     fn top_w_falling(&self) -> i32 {
@@ -134,42 +133,48 @@ impl Chamber {
         )
     }
 
-    fn render_top(&self, lines: usize) -> String {
+    fn is_rock(&self, pos: Pos) -> bool {
+        assert!(0 <= pos.x && pos.x < 7);
+        (pos.y as usize) < self.rocks.len() && self.rocks[pos.y as usize][pos.x as usize]
+    }
+
+    fn add_rock(&mut self, pos: Pos) {
+        assert!(0 <= pos.x && pos.x < 7);
+        while (pos.y as usize) >= self.rocks.len() {
+            self.rocks
+                .push([false, false, false, false, false, false, false]);
+        }
+        self.rocks[pos.y as usize][pos.x as usize] = true;
+    }
+
+    fn render(&self, lines: usize) -> String {
         let mut ret = String::new();
-        let falling: HashSet<Pos> = match &self.falling {
-            Some(rock) => rock.0.iter().copied().collect(),
-            None => HashSet::new(),
-        };
         for y in ((self.top_w_falling() - (lines as i32))..=self.top_w_falling()).rev() {
-            ret.push_str("|");
+            ret.push('|');
             for x in 0..7 {
                 let pos = Pos::new(y, x);
-                if falling.contains(&pos) {
-                    ret.push_str("@");
-                } else if self.rocks.contains(&pos) {
-                    ret.push_str("#");
+                if self.falling.map(|r| r.contains(pos)).unwrap_or_default() {
+                    ret.push('@');
+                } else if self.is_rock(pos) {
+                    ret.push('#');
                 } else {
-                    ret.push_str(".");
+                    ret.push('.');
                 }
             }
             ret.push_str("|\n");
         }
-        ret.push_str("+");
+        ret.push('+');
         for _ in 0..7 {
-            ret.push_str("-");
+            ret.push('-');
         }
         ret.push_str("+\n");
         ret
     }
 
-    fn render(&self) -> String {
-        self.render_top(self.top_w_falling() as usize)
-    }
-
     fn overlaps(&self, rock: &Rock) -> bool {
         rock.0
             .iter()
-            .any(|pos| pos.x < 0 || pos.x >= 7 || pos.y < 0 || self.rocks.contains(pos))
+            .any(|pos| pos.x < 0 || pos.x >= 7 || pos.y < 0 || self.is_rock(*pos))
     }
 
     fn floats(&self, rock: &Rock) -> bool {
@@ -206,10 +211,10 @@ impl Chamber {
     }
 
     fn land(&mut self) {
-        if let Some(rock) = &self.falling {
-            assert!(!self.overlaps(rock) && !self.floats(rock));
+        if let Some(rock) = self.falling {
+            assert!(!self.overlaps(&rock) && !self.floats(&rock));
             rock.0.iter().for_each(|pos| {
-                self.rocks.insert(*pos);
+                self.add_rock(*pos);
             });
             self.falling = None;
             self.num_landed += 1;
@@ -267,7 +272,7 @@ fn main() {
     for _ in 0..2022 {
         chamber.turn_until_land();
     }
-    // println!("{}", chamber.render_top(15));
+    // println!("{}", chamber.render(15));
     println!("Part 1: {}", chamber.top());
 
     let mut chamber = Chamber::construct(jets.clone());
@@ -278,14 +283,14 @@ fn main() {
     // println!("Proto_period is {}.", proto_period);
     chamber.land_n_rocks(proto_period);
     let lines_before_period = chamber.top();
-    let seen = chamber.render_top(15);
+    let seen = chamber.render(15);
     // println!("Looking for:\n{}", seen);
     let mut iterations = 0;
     loop {
         chamber.turn_until_land();
         iterations += 1;
-        if chamber.render_top(15) == seen {
-            // println!("{}: {}/{}\n{}", iterations, chamber.num_landed, chamber.top(), chamber.render_top(15));
+        if chamber.render(15) == seen {
+            // println!("{}: {}/{}\n{}", iterations, chamber.num_landed, chamber.top(), chamber.render(15));
             break;
         }
     }
