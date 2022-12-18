@@ -1,7 +1,6 @@
 use std::cmp::max;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashSet;
 use std::io;
-use std::iter::Cycle;
 use std::ops::Add;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -39,70 +38,78 @@ impl Pos {
     }
 }
 
-enum Stone {
-    HLine,
-    Plus,
-    Ell,
-    VLine,
-    Block,
-}
-
-use Stone::*;
-
-impl Stone {
-    fn next(&self) -> Self {
-        match self {
-            HLine => Plus,
-            Plus => Ell,
-            Ell => VLine,
-            VLine => Block,
-            Block => HLine,
-        }
-    }
-}
+const ROCKS: [[Pos; 5]; 5] = [
+    [
+        Pos { y: 0, x: 0 },
+        Pos { y: 0, x: 1 },
+        Pos { y: 0, x: 2 },
+        Pos { y: 0, x: 3 },
+        Pos { y: 0, x: 0 },
+    ],
+    [
+        Pos { y: 0, x: 1 },
+        Pos { y: 1, x: 0 },
+        Pos { y: 1, x: 1 },
+        Pos { y: 1, x: 2 },
+        Pos { y: 2, x: 1 },
+    ],
+    [
+        Pos { y: 0, x: 0 },
+        Pos { y: 0, x: 1 },
+        Pos { y: 0, x: 2 },
+        Pos { y: 1, x: 2 },
+        Pos { y: 2, x: 2 },
+    ],
+    [
+        Pos { y: 0, x: 0 },
+        Pos { y: 1, x: 0 },
+        Pos { y: 2, x: 0 },
+        Pos { y: 3, x: 0 },
+        Pos { y: 0, x: 0 },
+    ],
+    [
+        Pos { y: 0, x: 0 },
+        Pos { y: 0, x: 1 },
+        Pos { y: 1, x: 0 },
+        Pos { y: 1, x: 1 },
+        Pos { y: 0, x: 0 },
+    ],
+];
 
 #[derive(Clone, Debug)]
-struct Rock(HashSet<Pos>);
+struct Rock([Pos; 5]);
 
 impl Rock {
-    fn new(model: &Stone) -> Self {
-        // (0, 0) in each Rock is the lower left corner of its bounding box
-        Self(
-            match model {
-                HLine => vec![(0, 0), (0, 1), (0, 2), (0, 3)],
-                Plus => vec![(0, 1), (1, 0), (1, 1), (1, 2), (2, 1)],
-                Ell => vec![(0, 0), (0, 1), (0, 2), (1, 2), (2, 2)],
-                VLine => vec![(0, 0), (1, 0), (2, 0), (3, 0)],
-                Block => vec![(0, 0), (0, 1), (1, 0), (1, 1)],
-            }
-            .into_iter()
-            .map(|(y, x)| Pos::new(y, x))
-            .collect(),
-        )
+    fn from(raw: [Pos; 5]) -> Self {
+        Self(raw.clone())
     }
 
     fn translate(&self, delta: Pos) -> Self {
-        Self(self.0.iter().map(|p| *p + delta).collect())
+        Self([
+            self.0[0] + delta,
+            self.0[1] + delta,
+            self.0[2] + delta,
+            self.0[3] + delta,
+            self.0[4] + delta,
+        ])
     }
 }
 
 struct Chamber {
-    width: u32,
     rocks: HashSet<Pos>,
-    next_stone: Stone,
     falling: Option<Rock>,
-    jets: VecDeque<Pos>,
+    jets: Vec<Pos>,
+    num_turns: u64,
     num_landed: u64,
 }
 
 impl Chamber {
-    fn construct(width: u32, first_stone: Stone, jets: VecDeque<Pos>) -> Self {
+    fn construct(jets: Vec<Pos>) -> Self {
         let mut ret = Self {
-            width,
             rocks: HashSet::new(),
-            next_stone: first_stone,
             falling: None,
             jets,
+            num_turns: 0,
             num_landed: 0,
         };
         ret.next_rock();
@@ -110,7 +117,11 @@ impl Chamber {
     }
 
     fn top(&self) -> i32 {
-        self.rocks.iter().map(|pos| pos.y + 1).max().unwrap_or_default()
+        self.rocks
+            .iter()
+            .map(|pos| pos.y + 1)
+            .max()
+            .unwrap_or_default()
     }
 
     fn top_w_falling(&self) -> i32 {
@@ -126,12 +137,12 @@ impl Chamber {
     fn render_top(&self, lines: usize) -> String {
         let mut ret = String::new();
         let falling: HashSet<Pos> = match &self.falling {
-            Some(rock) => rock.0.clone(),
+            Some(rock) => rock.0.iter().copied().collect(),
             None => HashSet::new(),
         };
         for y in ((self.top_w_falling() - (lines as i32))..=self.top_w_falling()).rev() {
             ret.push_str("|");
-            for x in 0..(self.width as i32) {
+            for x in 0..7 {
                 let pos = Pos::new(y, x);
                 if falling.contains(&pos) {
                     ret.push_str("@");
@@ -144,7 +155,7 @@ impl Chamber {
             ret.push_str("|\n");
         }
         ret.push_str("+");
-        for _ in 0..self.width {
+        for _ in 0..7 {
             ret.push_str("-");
         }
         ret.push_str("+\n");
@@ -156,8 +167,9 @@ impl Chamber {
     }
 
     fn overlaps(&self, rock: &Rock) -> bool {
-        rock.0.intersection(&self.rocks).count() > 0 ||
-        rock.0.iter().any(|pos| pos.x < 0 || pos.x >= (self.width as i32) || pos.y < 0)
+        rock.0
+            .iter()
+            .any(|pos| pos.x < 0 || pos.x >= 7 || pos.y < 0 || self.rocks.contains(pos))
     }
 
     fn floats(&self, rock: &Rock) -> bool {
@@ -167,8 +179,7 @@ impl Chamber {
     fn next_rock(&mut self) {
         assert!(self.falling.is_none());
         let start_pos = Pos::new(self.top() + 3, 2);
-        let rock = Rock::new(&self.next_stone);
-        self.next_stone = self.next_stone.next();
+        let rock = Rock::from(ROCKS[self.num_landed as usize % ROCKS.len()]);
         self.falling = Some(rock.translate(start_pos));
     }
 
@@ -209,14 +220,16 @@ impl Chamber {
 
     fn turn(&mut self) -> bool {
         assert!(self.falling.is_some());
-        let blow = self.jets.pop_front().unwrap();
+        let blow = self.jets[self.num_turns as usize % self.jets.len()];
         self.blow(blow);
-        self.jets.push_back(blow);
+        self.num_turns += 1;
         if !self.fall() {
             self.land();
             self.next_rock();
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 
     fn turn_until_land(&mut self) {
@@ -239,7 +252,7 @@ fn main() {
     io::stdin()
         .read_line(&mut line)
         .expect("Failed to read line");
-    let jets: VecDeque<Pos> = line
+    let jets: Vec<Pos> = line
         .trim()
         .as_bytes()
         .iter()
@@ -250,46 +263,46 @@ fn main() {
         })
         .collect();
 
-    let mut chamber = Chamber::construct(7, HLine, jets.clone());
+    let mut chamber = Chamber::construct(jets.clone());
     for _ in 0..2022 {
         chamber.turn_until_land();
     }
     // println!("{}", chamber.render_top(15));
     println!("Part 1: {}", chamber.top());
 
-    let mut chamber = Chamber::construct(7, HLine, jets.clone());
+    let mut chamber = Chamber::construct(jets.clone());
     let total_rocks = 1_000_000_000_000u64;
     // Find a number of rocks landed after which our top state repeats,
     // record how many lines are in between
     let proto_period = jets.len() * 5;
-    println!("Proto_period is {}.", proto_period);
+    // println!("Proto_period is {}.", proto_period);
     chamber.land_n_rocks(proto_period);
     let lines_before_period = chamber.top();
     let seen = chamber.render_top(15);
-    println!("Looking for:\n{}", seen);
+    // println!("Looking for:\n{}", seen);
     let mut iterations = 0;
     loop {
-        chamber.land_n_rocks(proto_period);
+        chamber.turn_until_land();
         iterations += 1;
-        println!("{}: {}/{}\n{}", iterations, chamber.num_landed, chamber.top(), chamber.render_top(15));
         if chamber.render_top(15) == seen {
+            // println!("{}: {}/{}\n{}", iterations, chamber.num_landed, chamber.top(), chamber.render_top(15));
             break;
         }
     }
-    let period = iterations * proto_period;
+    let period = iterations;
     let lines_after_period = chamber.top();
     let lines_per_period = chamber.top() - lines_before_period;
-    println!("After {period} rocks, we have repeated our state with {lines_per_period} extra lines");
+    // println!("After {period} rocks, we have repeated our state with {lines_per_period} extra lines");
     // Verify our period and #lines produced per period
     chamber.land_n_rocks(period);
     let lines_after_another_period = chamber.top();
     assert!(lines_after_another_period - lines_after_period == lines_per_period);
     // Now fast-forward to the end
     let remainder = total_rocks - chamber.num_landed;
-    println!("We need to drop {remainder} more rocks...");
+    // println!("We need to drop {remainder} more rocks...");
     let num_periods = remainder / (period as u64);
     let remainder = remainder % (period as u64);
-    println!("Simulate {num_periods} * {period} rocks, followed by dropping a remainder of {remainder} extra rocks");
+    // println!("Simulate {num_periods} * {period} rocks, followed by dropping a remainder of {remainder} extra rocks");
     chamber.land_n_rocks(remainder as usize);
     assert!(chamber.num_landed + num_periods * period as u64 == total_rocks);
     let total_lines = chamber.top() as u64 + lines_per_period as u64 * num_periods;
